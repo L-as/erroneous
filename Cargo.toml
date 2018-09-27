@@ -1,0 +1,18 @@
+[package]
+authors       = ["Las <las@protonmail.ch>"]
+description   = "Minimalistic helper for using errors"
+documentation = "https://docs.rs/erroneous"
+license       = "MIT OR Apache-2.0"
+name          = "erroneous"
+version       = "0.1.0"
+
+[workspace]
+
+[dependencies.erroneous-derive]
+path = "derive"
+
+[lib]
+path = "lib.rs"
+
+[dev-dependencies]
+derive_more = {git = "https://github.com/Laaas/derive_more.git", rev = "76d791f001cb8f8653f0069fa2746dac14c007e8"}
