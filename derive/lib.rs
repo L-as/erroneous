@@ -42,10 +42,10 @@ fn is_attr<Attr: Attribute>(bindings: &&synstructure::BindingInfo) -> bool {
 	let mut found = false;
 	for attr in &bindings.ast().attrs {
 		if let Some(meta) = attr.interpret_meta() {
-			if meta.name() == "Error" {
+			if meta.name() == "error" {
 				assert!(
 					!error_meta_found,
-					"Can not have multiple #[Error]s on a field!"
+					"Can not have multiple #[error]s on a field!"
 				);
 				let list = unwrap_match!(meta,
 					syn::Meta::List(list) => list.nested, "Need parentheses!");
@@ -61,4 +61,4 @@ fn is_attr<Attr: Attribute>(bindings: &&synstructure::BindingInfo) -> bool {
 	found
 }
 
-decl_derive!([Error, attributes(Error)] => error_derive);
+decl_derive!([Error, attributes(error)] => error_derive);

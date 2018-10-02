@@ -1,90 +1,57 @@
-# erroneous - Minimalistic helper for using errors
+% erroneous - Helper for defining and using errors
 
-`erroneous` is an opinionated (albeit minimalistic) library that helps you with using errors.
+[![Documentation](https://img.shields.io/readthedocs/pip.svg)](docs.rs/erroneous)
 
-Check the [documentation](docs.rs/erroneous)
+`erroneous` is a crate with two features:
+- Its `Error` trait
+- Its `Error` derive
 
-`erroneous`'s most important item is its `Error` trait.
-It is a supertrait of the standard library's error trait, but with extra guarantees.
-That means it's `Send`, `Sync`, and also `'static`. This means you can pass it around
-without any restrictions, and also downcast `dyn Error` to concrete types.
+# The `Error` trait
+The `Error` trait is a supertrait of `std::error::Error`.
+It is automatically implemented for all implementors of `std::error::Error`,
+with some restrictions.
+Particularly, it is `Sized + Send + Sync + 'static`. This means you have
+more freedom when dealing with them, and can in addition downcast dyn Error
+to concrete types.
 
-## How to use
+# The `Error` derive
+This feature just implements `std::error::Error` (and thus also `erroneous::Error`) for you,
+You can annotate a field in your input as `#[error(source)]` to make the `cause` method
+return that field (and in the future the `source` method).
 
-### What errors should my functions return?
+# Guidelines
 
-A function should precisely specify how it can err.
-This is best accomplished by having an enum representing the types
-of errors that can occur, optionally non-exhaustive.
+## Scope
+Your error type should not be able to represent errors that can
+never happen, unless of course for backward compatibility.
+This means you shouldn't just use a single error type for your entire crate,
+because not all functions can return all errors.
 
-An example for a parser is:
-```rust
-#[macro_use]
-extern crate erroneous;
-#[macro_use]
-extern crate derive_more;
+## Information
+Your error type should provide two types of information: developer-oriented
+information and end-user-oriented information.
 
-#[derive(Debug, Display, Error)]
-pub enum ParseError {
-	#[display(fmt = "Unexpected number {} found in input", "_0")]
-	UnexpectedNumber(u64),
-}
+You should have descriptive error messages, that include important (but not obvious)
+information. This means in a parsing function, your error probably shouldn't return
+the input parsed.
 
-pub fn parse(input: Input) -> Result<Output, ParseError> {
-	...
-}
-```
+In addition, your message should help your user fix the problem.
+However, this also applies not just to the end-user, but also to the **developer**.
 
-If you want to return errors that are caused by other errors, you can do this:
+The developer should have a way to programmatically handle errors, and that doesn't
+mean that the developer should use an English parsing library to parse your error
+message. No, it means that you should provide clear error types (e.g. through enum variants)
+that are documented.
 
-```rust#[macro_use]
-extern crate erroneous;
-#[macro_use]
-extern crate derive_more;
+Let's say you're writing a file system, and you have an `open_file` function.
+If the file does not exist, it should return an error that indicates that the
+file does not exist, then the program can e.g. create that file.
 
-use parse::{ParseError, parse};
-
-#[derive(Debug, Display, From, Error)]
-pub enum UtilizeError {
-	#[display(fmt = "Input could not be parsed")]
-	ParseError(#[error(cause)] ParseError),
-	#[display(fmt = "Input was incorrect")]
-	BadInput,
-}
-
-pub fn utilize(input: Input) -> Result<(), UtilizeError> {
-	let output = parse(input)?;
-	...
-}
-```
-
-### What information should my error provide?
-
-Errors in addition to encoding the possibility of failure, also need to provide
-*information* to help one fix the cause of the error.
-
-However it should not provide information that is unnecessary and obvious,
-e.g. a parsing function should not say "Parsing of <provided input> failed",
-since the caller already *knows* that.
-They know what function they're calling and what input they've provided.
-
-#### What should my error `Display`?
-
-Your error should display why it occurred (per the rules above), but it
-should not display the cause, if any, since the logging facility
-will want to format causes itself.
-
-#### How should I generate errors inside my code?
-
-There aren't any helpers for this, since there isn't any catch-all approach.
-What you should do is just use `Result::map_err` for errors that have a cause,
-and just do `return Err(MyError(some_var))` for those that don't have a cause.
-
-#### Examples
+# Examples
 
 Check the examples subdirectory.
 
-## Backtraces
+# Backtraces
 
 Backtraces are not an essential part of errors. You should be able to tell
 what happened and why without needing a backtrace, you have to remember:
@@ -98,7 +65,7 @@ it is important when debugging, but should absolutely not be required in other c
 This is why it's desirable for backtraces to be available in `erroneous`, however,
 I am waiting until the new Error trait is stabilized, since that will provide it.
 
-## License
+# License
 
 `erroneous` is licensed under the terms of the MIT License or the Apache License
 2.0, at your choosing.

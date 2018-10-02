@@ -25,21 +25,24 @@ fn parse(input: &str) -> Result<char, ParseError> {
 	last.ok_or(ParseError::Empty)
 }
 
-#[derive(Debug, Display, Error)]
-#[display(
-	fmt = "Input '{}' could not be converted to a character",
-	"_0"
-)]
-struct ToNumberError(char);
+fn to_number(input: char) -> Option<u8> {
+	match input {
+		'0'..='9' => Some((char as u32 - '0' as u32) as u8),
+		_ => None,
+	}
+}
 
 #[derive(Debug, Display, From, Error)]
-#[display(fmt = "Fatal error encountered")]
 enum MainError {
+	#[display(fmt = "Data could not be parsed")]
 	Parse(ParseError),
-	ToNumber(ToNumberError),
+	#[display(fmt = "Parsed data '{}' is invalid", _0)]
+	InvalidData(char),
 }
 
 fn main() -> Result<(), MainError> {
-	assert!(parse("fuaxna")? == 'a');
+	let parsed = parse("fuaxna")?;
+	assert!(parsed == 'a');
+	assert!(to_number(parsed).ok_or(MainError::InvalidData)? == 2);
 	Ok(())
 }
