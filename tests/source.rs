@@ -10,7 +10,7 @@ struct A;
 
 #[derive(Debug, Display, Error)]
 #[display(fmt = "B")]
-struct B(#[error(cause)] A);
+struct B(#[error(source)] A);
 
 #[test]
 fn main() {
