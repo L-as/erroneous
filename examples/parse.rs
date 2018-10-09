@@ -27,7 +27,7 @@ fn parse(input: &str) -> Result<char, ParseError> {
 
 fn to_number(input: char) -> Option<u8> {
 	match input {
-		'0'..='9' => Some((char as u32 - '0' as u32) as u8),
+		'0'..='9' => Some((input as u32 - '0' as u32) as u8),
 		_ => None,
 	}
 }
@@ -43,6 +43,6 @@ enum MainError {
 fn main() -> Result<(), MainError> {
 	let parsed = parse("fuaxna")?;
 	assert!(parsed == 'a');
-	assert!(to_number(parsed).ok_or(MainError::InvalidData)? == 2);
+	assert!(to_number(parsed).ok_or(MainError::InvalidData(parsed))? == 2);
 	Ok(())
 }
