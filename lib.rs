@@ -8,8 +8,14 @@ use std::error::Error as StdError;
 /// A "replacement" trait for std::error::Error.
 /// You should use this as a bound instead of that one,
 /// since this one has more guarantees.
-pub trait Error: StdError + Send + Sync + 'static {
-	fn iter<'a>(&'a self) -> Iter<'a>;
+pub trait Error: StdError + Send + Sync + Sized + 'static {
+	fn iter<'a>(&'a self) -> Iter<'a> {
+		Iter { error: self }
+	}
+
+	fn cause(&self) -> Option<&StdError> {
+		StdError::cause(self)
+	}
 }
 
 pub struct Iter<'a> {
@@ -29,8 +35,4 @@ impl<'a> Iterator for Iter<'a> {
 	}
 }
 
-impl<T: StdError + Send + Sync + 'static> Error for T {
-	fn iter<'a>(&'a self) -> Iter<'a> {
-		Iter { error: self }
-	}
-}
+impl<T: StdError + Send + Sync + 'static> Error for T {}
