@@ -1,64 +1,144 @@
+extern crate proc_macro;
 extern crate proc_macro2;
+#[macro_use]
+extern crate quote;
+#[macro_use]
 extern crate syn;
 
-#[macro_use]
-extern crate synstructure;
-#[macro_use]
-extern crate matches2;
+use proc_macro2::{Ident, Span, TokenStream};
+use syn::{
+	parse::{Error, Result},
+	spanned::Spanned,
+	Data, DeriveInput, Fields, Meta, NestedMeta,
+};
 
-trait Attribute {
-	const NAME: &'static str;
-}
+#[proc_macro_derive(Error, attributes(error))]
+pub fn derive_error(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+	let input = parse_macro_input!(input as DeriveInput);
 
-struct Source;
-impl Attribute for Source {
-	const NAME: &'static str = "source";
-}
+	let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+	let name = &input.ident;
+	let arms = match get_match_arms(&input) {
+	    Ok(arms) => arms,
+	    Err(e) => return e.to_compile_error().into(),
+	};
 
-fn error_derive(s: synstructure::Structure) -> proc_macro2::TokenStream {
-	let source_body = s.each_variant(|v| {
-		v.bindings()
-			.iter()
-			.find(is_attr::<Source>)
-			.map(|s| quote!(return Some(#s)))
-			.unwrap_or(quote!(return None))
-	});
-	s.gen_impl(quote! {
-		extern crate std;
-		extern crate core;
+	let assertion = Ident::new(&format!("_ErrorDeriveAssertBoundsFor{}", name), Span::call_site());
 
-		gen impl std::error::Error for @Self {
-			#[allow(unreachable_code)]
+	let assert_bounds = quote_spanned! {input.span()=>
+		struct #assertion where #name: Send + Sync + Sized + 'static;
+	};
+
+	let expanded = quote! {
+	    #assert_bounds
+		impl #impl_generics ::std::error::Error for #name #ty_generics #where_clause {
 			fn cause(&self) -> core::option::Option<&dyn std::error::Error> {
-				match self {#source_body}
-				None
+				match self {
+					#arms
+				}
 			}
 		}
+	};
+
+	expanded.into()
+}
+
+fn get_matcher(fields: &Fields) -> TokenStream {
+	match fields {
+		Fields::Unit => TokenStream::new(),
+		Fields::Unnamed(fields) => {
+			let fields: TokenStream = (0..fields.unnamed.len())
+				.map(|n| {
+					let i = Ident::new(&format!("_{}", n), Span::call_site());
+					quote!(#i,)
+				}).collect();
+			quote!((#fields))
+		}
+		Fields::Named(fields) => {
+			let fields: TokenStream = fields
+				.named
+				.iter()
+				.map(|f| {
+					let i = f.ident.as_ref().unwrap();
+					quote!(#i,)
+				}).collect();
+			quote!({#fields})
+		}
+	}
+}
+
+fn get_expr(fields: &Fields) -> Result<TokenStream> {
+	const PROPER_SYNTAX: &'static str = "Proper syntax: #[error(source)] my_field";
+
+	let mut source = None;
+	for (i, field) in fields.iter().enumerate() {
+		if field.attrs
+			.iter()
+			.filter_map(|a| a.interpret_meta())
+			.filter(|m| m.name() == "error")
+			.map(|m| match m {
+				Meta::List(list) => Ok(list),
+				m => Err(Error::new(m.span(), PROPER_SYNTAX))
+			})
+			.map(|m| {
+				let list = m?.nested;
+				if list.len() != 1 {
+					Err(Error::new(list.span(), PROPER_SYNTAX))
+				} else {
+					Ok(list[0].clone()) // can't move out... why no IndexMove?
+				}
+			})
+			.map(|nested| match nested? {
+				NestedMeta::Meta(Meta::Word(ident)) => match ident.to_string().as_ref() {
+					"source" => Ok(()),
+					_ => Err(Error::new(ident.span(), "Only #[error(source)] is supported")),
+				},
+				nested => Err(Error::new(nested.span(), PROPER_SYNTAX)),
+			})
+			.try_fold(false, |s, r| {
+				if s {
+					Err(Error::new(field.span(), "Too many attributes!"))
+				} else {
+					r?;
+					Ok(true)
+				}
+			})?
+		{
+			if source.is_some() {
+				return Err(Error::new(fields.span(), "Too many sources, there can only be 1!"));
+			}
+			source = Some((i, field));
+		}
+	}
+
+	Ok(match source {
+		Some((i, field)) => if let Some(ident) = &field.ident {
+			quote!(Some(#ident))
+		} else {
+			let ident = Ident::new(&format!("_{}", i), Span::call_site());
+			quote!(Some(#ident))
+		},
+		None => quote!(None),
 	})
 }
 
-fn is_attr<Attr: Attribute>(bindings: &&synstructure::BindingInfo) -> bool {
-	let mut error_meta_found = false;
-	let mut found = false;
-	for attr in &bindings.ast().attrs {
-		if let Some(meta) = attr.interpret_meta() {
-			if meta.name() == "error" {
-				assert!(
-					!error_meta_found,
-					"Can not have multiple #[error]s on a field!"
-				);
-				let list = unwrap_match!(meta,
-					syn::Meta::List(list) => list.nested, "Need parentheses!");
-				let mut list = list.iter();
-				let attr = unwrap_match!(list.next(),
-					Some(syn::NestedMeta::Meta(syn::Meta::Word(attr))) => attr, "Content needs to be a single word!");
-				assert!(list.next().is_none(), "Can only have a single word here!");
-				error_meta_found = true;
-				found = attr == Attr::NAME;
-			}
-		}
+fn get_match_arms(input: &DeriveInput) -> Result<TokenStream> {
+	match &input.data {
+		Data::Enum(e) => e.variants.iter().try_fold(TokenStream::new(), |arms, v| {
+			let matcher = get_matcher(&v.fields);
+			let expr = get_expr(&v.fields)?;
+			let name = &input.ident;
+			let v_name = &v.ident;
+			Ok(quote!(#arms #name::#v_name #matcher => #expr,))
+		}),
+		Data::Struct(s) => {
+			let matcher = get_matcher(&s.fields);
+			let expr = get_expr(&s.fields)?;
+			let name = &input.ident;
+			Ok(quote!(#name #matcher => #expr,))
+		},
+		Data::Union(_) => {
+			Err(Error::new(input.span(), "Can not derive Error on unions"))
+		},
 	}
-	found
 }
-
-decl_derive!([Error, attributes(error)] => error_derive);
