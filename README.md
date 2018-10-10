@@ -10,7 +10,7 @@
 The `Error` trait is a supertrait of `std::error::Error`.
 It is automatically implemented for all implementors of `std::error::Error`,
 with some restrictions.
-Particularly, it is `Sized + Send + Sync + 'static`. This means you have
+Particularly, it is `Send + Sync + 'static`. This means you have
 more freedom when dealing with them, and can in addition downcast dyn Error
 to concrete types.
 
