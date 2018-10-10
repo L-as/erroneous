@@ -19,5 +19,5 @@ enum E<Custom: Error> {
 fn main() {
 	let _ = E::A::<SomeError>;
 	let b = E::Custom(SomeError);
-	b.cause().unwrap();
+	b.source().unwrap();
 }

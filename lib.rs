@@ -11,8 +11,8 @@ use std::error::Error as StdError;
 pub trait Error: StdError + Send + Sync + 'static {
 	fn iter<'a>(&'a self) -> Iter<'a>;
 
-	fn cause(&self) -> Option<&StdError> {
-		StdError::cause(self)
+	fn source(&self) -> Option<&(dyn StdError + 'static)> {
+		StdError::source(self)
 	}
 }
 
@@ -21,12 +21,12 @@ pub struct Iter<'a> {
 }
 
 impl<'a> Iterator for Iter<'a> {
-	type Item = &'a dyn StdError;
+	type Item = &'a(dyn StdError + 'static);
 
 	fn next(&mut self) -> Option<Self::Item> {
-		if let Some(cause) = self.error.cause() {
-			self.error = cause;
-			Some(cause)
+		if let Some(source) = self.error.source() {
+			self.error = source;
+			Some(source)
 		} else {
 			None
 		}

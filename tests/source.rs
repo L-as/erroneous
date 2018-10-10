@@ -12,8 +12,16 @@ struct A;
 #[display(fmt = "B")]
 struct B(#[error(source)] A);
 
+#[derive(Debug, Display, Error)]
+#[display(fmt = "C")]
+struct C(#[error(source)] B);
+
 #[test]
 fn main() {
-	let b = B(A);
-	let _ = b.cause().unwrap();
+	let e = C(B(A));
+	let e = e.source().unwrap();
+	assert!(e.is::<B>());
+	let e = e.source().unwrap();
+	assert!(e.is::<A>());
+	assert!(e.source().is_none());
 }
