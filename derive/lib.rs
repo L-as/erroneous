@@ -25,8 +25,15 @@ pub fn derive_error(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
 	let assertion = Ident::new(&format!("_ErrorDeriveAssertBoundsFor{}", name), Span::call_site());
 
+	let predicates: TokenStream = where_clause
+		.iter()
+		.flat_map(|w| w.predicates.iter())
+		.map(|p| quote!(#p,))
+		.chain(Some(quote!(#name #ty_generics: Send + Sync + Sized + 'static)))
+		.collect();
+
 	let assert_bounds = quote_spanned! {input.span()=>
-		struct #assertion where #name: Send + Sync + Sized + 'static;
+		struct #assertion #impl_generics (#name #ty_generics) where #predicates;
 	};
 
 	let expanded = quote! {
