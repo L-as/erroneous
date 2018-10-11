@@ -17,16 +17,16 @@ pub trait Error: StdError + Send + Sync + 'static {
 }
 
 pub struct Iter<'a> {
-	error: &'a dyn StdError,
+	error: Option<&'a (dyn StdError + 'static)>,
 }
 
 impl<'a> Iterator for Iter<'a> {
-	type Item = &'a(dyn StdError + 'static);
+	type Item = &'a (dyn StdError + 'static);
 
 	fn next(&mut self) -> Option<Self::Item> {
-		if let Some(source) = self.error.source() {
-			self.error = source;
-			Some(source)
+		if let Some(error) = self.error {
+			self.error = error.source();
+			Some(error)
 		} else {
 			None
 		}
@@ -35,6 +35,6 @@ impl<'a> Iterator for Iter<'a> {
 
 impl<T: StdError + Send + Sync + 'static> Error for T {
 	fn iter<'a>(&'a self) -> Iter<'a> {
-		Iter { error: self }
+		Iter { error: Some(self) }
 	}
 }

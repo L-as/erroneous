@@ -29,6 +29,7 @@ fn source() {
 #[test]
 fn iter() {
 	let mut e = C(B(A)).iter();
+	assert!(e.next().unwrap().is::<C>());
 	assert!(e.next().unwrap().is::<B>());
 	assert!(e.next().unwrap().is::<A>());
 	assert!(e.next().is_none());
