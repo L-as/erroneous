@@ -9,7 +9,11 @@ use proc_macro2::{Ident, Span, TokenStream};
 use syn::{
 	parse::{Error, Result},
 	spanned::Spanned,
-	Data, DeriveInput, Fields, Meta, NestedMeta,
+	Data,
+	DeriveInput,
+	Fields,
+	Meta,
+	NestedMeta,
 };
 
 #[proc_macro_derive(Error, attributes(error))]
@@ -19,17 +23,22 @@ pub fn derive_error(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 	let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 	let name = &input.ident;
 	let arms = match get_match_arms(&input) {
-	    Ok(arms) => arms,
-	    Err(e) => return e.to_compile_error().into(),
+		Ok(arms) => arms,
+		Err(e) => return e.to_compile_error().into(),
 	};
 
-	let assertion = Ident::new(&format!("_ErrorDeriveAssertBoundsFor{}", name), Span::call_site());
+	let assertion = Ident::new(
+		&format!("_ErrorDeriveAssertBoundsFor{}", name),
+		Span::call_site(),
+	);
 
 	let predicates: TokenStream = where_clause
 		.iter()
 		.flat_map(|w| w.predicates.iter())
 		.map(|p| quote!(#p,))
-		.chain(Some(quote!(#name #ty_generics: Send + Sync + Sized + 'static)))
+		.chain(Some(
+			quote!(#name #ty_generics: Send + Sync + Sized + 'static),
+		))
 		.collect();
 
 	let assert_bounds = quote_spanned! {input.span()=>
@@ -37,7 +46,7 @@ pub fn derive_error(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 	};
 
 	let expanded = quote! {
-	    #assert_bounds
+		#assert_bounds
 		impl #impl_generics ::std::error::Error for #name #ty_generics #where_clause {
 			fn source(&self) -> core::option::Option<&(dyn std::error::Error + 'static)> {
 				match self {
@@ -58,9 +67,10 @@ fn get_matcher(fields: &Fields) -> TokenStream {
 				.map(|n| {
 					let i = Ident::new(&format!("_{}", n), Span::call_site());
 					quote!(#i,)
-				}).collect();
+				})
+				.collect();
 			quote!((#fields))
-		}
+		},
 		Fields::Named(fields) => {
 			let fields: TokenStream = fields
 				.named
@@ -68,9 +78,10 @@ fn get_matcher(fields: &Fields) -> TokenStream {
 				.map(|f| {
 					let i = f.ident.as_ref().unwrap();
 					quote!(#i,)
-				}).collect();
+				})
+				.collect();
 			quote!({#fields})
-		}
+		},
 	}
 }
 
@@ -79,13 +90,14 @@ fn get_expr(fields: &Fields) -> Result<TokenStream> {
 
 	let mut source = None;
 	for (i, field) in fields.iter().enumerate() {
-		if field.attrs
+		if field
+			.attrs
 			.iter()
 			.filter_map(|a| a.interpret_meta())
 			.filter(|m| m.name() == "error")
 			.map(|m| match m {
 				Meta::List(list) => Ok(list),
-				m => Err(Error::new(m.span(), PROPER_SYNTAX))
+				m => Err(Error::new(m.span(), PROPER_SYNTAX)),
 			})
 			.map(|m| {
 				let list = m?.nested;
@@ -98,7 +110,10 @@ fn get_expr(fields: &Fields) -> Result<TokenStream> {
 			.map(|nested| match nested? {
 				NestedMeta::Meta(Meta::Word(ident)) => match ident.to_string().as_ref() {
 					"source" => Ok(()),
-					_ => Err(Error::new(ident.span(), "Only #[error(source)] is supported")),
+					_ => Err(Error::new(
+						ident.span(),
+						"Only #[error(source)] is supported",
+					)),
 				},
 				nested => Err(Error::new(nested.span(), PROPER_SYNTAX)),
 			})
@@ -109,21 +124,25 @@ fn get_expr(fields: &Fields) -> Result<TokenStream> {
 					r?;
 					Ok(true)
 				}
-			})?
-		{
+			})? {
 			if source.is_some() {
-				return Err(Error::new(fields.span(), "Too many sources, there can only be 1!"));
+				return Err(Error::new(
+					fields.span(),
+					"Too many sources, there can only be 1!",
+				));
 			}
 			source = Some((i, field));
 		}
 	}
 
 	Ok(match source {
-		Some((i, field)) => if let Some(ident) = &field.ident {
-			quote!(Some(#ident))
-		} else {
-			let ident = Ident::new(&format!("_{}", i), Span::call_site());
-			quote!(Some(#ident))
+		Some((i, field)) => {
+			if let Some(ident) = &field.ident {
+				quote!(Some(#ident))
+			} else {
+				let ident = Ident::new(&format!("_{}", i), Span::call_site());
+				quote!(Some(#ident))
+			}
 		},
 		None => quote!(None),
 	})
@@ -144,8 +163,6 @@ fn get_match_arms(input: &DeriveInput) -> Result<TokenStream> {
 			let name = &input.ident;
 			Ok(quote!(#name #matcher => #expr,))
 		},
-		Data::Union(_) => {
-			Err(Error::new(input.span(), "Can not derive Error on unions"))
-		},
+		Data::Union(_) => Err(Error::new(input.span(), "Can not derive Error on unions")),
 	}
 }
