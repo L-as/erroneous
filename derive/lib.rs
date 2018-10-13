@@ -51,6 +51,7 @@ pub fn derive_error(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 			fn source(&self) -> core::option::Option<&(dyn std::error::Error + 'static)> {
 				match self {
 					#arms
+					_ => None
 				}
 			}
 		}
