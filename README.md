@@ -1,4 +1,4 @@
-% erroneous - Helper for defining and using errors
+# erroneous - Helper for defining and using errors
 
 [![Documentation](https://img.shields.io/readthedocs/pip.svg)](docs.rs/erroneous)
 
