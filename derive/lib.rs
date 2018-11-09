@@ -11,6 +11,7 @@ use syn::{
 	spanned::Spanned,
 	Data,
 	DeriveInput,
+	Field,
 	Fields,
 	Meta,
 	NestedMeta,
@@ -89,9 +90,9 @@ fn get_matcher(fields: &Fields) -> TokenStream {
 fn get_expr(fields: &Fields) -> Result<TokenStream> {
 	const PROPER_SYNTAX: &'static str = "Proper syntax: #[error(source)] my_field";
 
-	let mut source = None;
+	let mut source: Option<(usize, &Field, bool)> = None;
 	for (i, field) in fields.iter().enumerate() {
-		if field
+		if let Some(defer) = field
 			.attrs
 			.iter()
 			.filter_map(|a| a.interpret_meta())
@@ -110,20 +111,17 @@ fn get_expr(fields: &Fields) -> Result<TokenStream> {
 			})
 			.map(|nested| match nested? {
 				NestedMeta::Meta(Meta::Word(ident)) => match ident.to_string().as_ref() {
-					"source" => Ok(()),
-					_ => Err(Error::new(
-						ident.span(),
-						"Only #[error(source)] is supported",
-					)),
+					"source" => Ok(false),
+					"defer" => Ok(true),
+					_ => Err(Error::new(ident.span(), "Unsupported attribute")),
 				},
 				nested => Err(Error::new(nested.span(), PROPER_SYNTAX)),
 			})
-			.try_fold(false, |s, r| {
-				if s {
+			.try_fold(None, |s, r| {
+				if s.is_some() {
 					Err(Error::new(field.span(), "Too many attributes!"))
 				} else {
-					r?;
-					Ok(true)
+					r.map(|r| Some(r))
 				}
 			})? {
 			if source.is_some() {
@@ -132,16 +130,20 @@ fn get_expr(fields: &Fields) -> Result<TokenStream> {
 					"Too many sources, there can only be 1!",
 				));
 			}
-			source = Some((i, field));
+			source = Some((i, field, defer));
 		}
 	}
 
 	Ok(match source {
-		Some((i, field)) => {
-			if let Some(ident) = &field.ident {
-				quote!(Some(#ident))
+		Some((i, field, defer)) => {
+			let ident = if let Some(ident) = &field.ident {
+				ident.clone()
 			} else {
-				let ident = Ident::new(&format!("_{}", i), Span::call_site());
+				Ident::new(&format!("_{}", i), Span::call_site())
+			};
+			if defer {
+				quote!(::std::error::Error::source(#ident))
+			} else {
 				quote!(Some(#ident))
 			}
 		},
