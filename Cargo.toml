@@ -15,4 +15,4 @@ path = "derive"
 path = "lib.rs"
 
 [dev-dependencies]
-derive_more = {git = "https://github.com/Laaas/derive_more.git"}
+derive_more = "0.13"
