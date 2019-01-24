@@ -3,6 +3,7 @@ extern crate derive_more;
 extern crate erroneous;
 
 use erroneous::Error;
+use std::error::Error as _;
 
 #[derive(Debug, Display, Error)]
 #[display(fmt = "SomeError")]

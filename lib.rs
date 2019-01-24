@@ -10,10 +10,6 @@ use std::error::Error as StdError;
 /// since this one has more guarantees.
 pub trait Error: StdError + Send + Sync + 'static {
 	fn iter<'a>(&'a self) -> Iter<'a>;
-
-	fn source(&self) -> Option<&(dyn StdError + 'static)> {
-		StdError::source(self)
-	}
 }
 
 pub struct Iter<'a> {
