@@ -4,6 +4,7 @@ description   = "Minimalistic helper for using errors"
 documentation = "https://docs.rs/erroneous"
 license       = "MIT OR Apache-2.0"
 name          = "erroneous"
+readme        = "README.md"
 repository    = "https://github.com/Laaas/erroneous"
 version       = "1.0.0"
 

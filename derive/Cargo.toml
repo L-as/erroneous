@@ -4,6 +4,7 @@ description   = "Derive Error, a part of the erroneous crate"
 documentation = "https://docs.rs/erroneous-derive"
 license       = "MIT OR Apache-2.0"
 name          = "erroneous-derive"
+readme        = "README.md"
 repository    = "https://github.com/Laaas/erroneous"
 version       = "1.0.0"
 
