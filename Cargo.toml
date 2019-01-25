@@ -4,6 +4,7 @@ description   = "Minimalistic helper for using errors"
 documentation = "https://docs.rs/erroneous"
 license       = "MIT OR Apache-2.0"
 name          = "erroneous"
+repository    = "https://github.com/Laaas/erroneous"
 version       = "0.1.0"
 
 [workspace]
