@@ -1,7 +1,11 @@
 [package]
-name = "erroneous-derive"
-version = "1.0.0"
-authors = ["Las <las@protonmail.ch>"]
+authors       = ["Las <las@protonmail.ch>"]
+description   = "Derive Error, a part of the erroneous crate"
+documentation = "https://docs.rs/erroneous-derive"
+license       = "MIT OR Apache-2.0"
+name          = "erroneous-derive"
+repository    = "https://github.com/Laaas/erroneous"
+version       = "1.0.0"
 
 [dependencies]
 matches2 = "1"
