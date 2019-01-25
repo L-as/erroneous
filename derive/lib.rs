@@ -29,7 +29,7 @@ use syn::{
 /// the chain of errors.
 ///
 /// Example:
-/// ```rust
+/// ```ignore
 /// #[derive(Error)]
 /// pub enum MyError {
 /// 	A(#[error(source)] A),
