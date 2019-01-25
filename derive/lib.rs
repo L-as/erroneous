@@ -17,6 +17,31 @@ use syn::{
 	NestedMeta,
 };
 
+/// Derive [`std::error::Error`][StdError] for the struct or enum, and ascertain that it
+/// is [`Send`][Send], [`Sync`][Sync], `'static`, and thus also [`erroneous::Error`](trait.Error.html).
+///
+/// You can declare a field in each variant (only one variant if a struct) of your type,
+/// which is to be the result of the [`std::error::Error::source`][source] method.
+/// You simply attach the attribute `#[error(source)]` or `#[error(defer)]` to the field.
+/// The first one does the obvious thing and just returns a reference to the field.
+/// The second one makes it return the result of the field's implementation of the `source`
+/// method. This is occasionally useful to avoid duplication of error messages when iterating
+/// the chain of errors.
+///
+/// Example:
+/// ```rust
+/// #[derive(Error)]
+/// pub enum MyError {
+/// 	A(#[error(source)] A),
+/// 	B(#[error(defer)] B),
+/// 	C(C),
+/// }
+/// ```
+///
+/// [StdError]: https://doc.rust-lang.org/std/error/trait.Error.html
+/// [Send]: https://doc.rust-lang.org/std/marker/trait.Send.html
+/// [Sync]: https://doc.rust-lang.org/std/marker/trait.Sync.html
+/// [source]: https://doc.rust-lang.org/std/error/trait.Error.html#tymethod.source
 #[proc_macro_derive(Error, attributes(error))]
 pub fn derive_error(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 	let input = parse_macro_input!(input as DeriveInput);
