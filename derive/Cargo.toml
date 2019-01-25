@@ -1,6 +1,6 @@
 [package]
 name = "erroneous-derive"
-version = "0.1.0"
+version = "1.0.0"
 authors = ["Las <las@protonmail.ch>"]
 
 [dependencies]
